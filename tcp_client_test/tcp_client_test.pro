@@ -16,26 +16,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    application/drawPic/mainwidget.cpp \
-    application/main/main.cpp \
-    application/socket/wwk_mod_tcpserver.cpp \
-    framwork/main/wwk_sched.cpp \
-    platform/encode/encode.cpp \
-    platform/sys/signal_init.c \
-    platform/sys/sys_init.cpp
+    main.cpp \
+    mainwidget.cpp \
+    mytcpclient.cpp
 
 HEADERS += \
-    application/drawPic/mainwidget.h \
-    application/main/main.h \
-    application/socket/wwk_mod_tcpserver.h \
-    framwork/main/wwk_mod.h \
-    framwork/main/wwk_sched.h \
-    platform/base/base.h \
-    platform/base/wwk_type.h \
-    platform/encode/encode.h \
-    platform/sys/signal_init.h \
-    platform/sys/sys_init.h \
-    platform/sys/thread_queue.h
+    mainwidget.h \
+    mytcpclient.h
 
 FORMS += \
     mainwidget.ui
@@ -44,6 +31,3 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-DISTFILES += \
-    .gitignore
