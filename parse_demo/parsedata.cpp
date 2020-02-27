@@ -248,3 +248,55 @@ int get_threshlod(std::vector<mdata_t>& pos)
     }
     return 0;
 }
+
+
+int RestorePic(std::vector<cv::Mat>& src, std::vector<cv::Mat>& src_pic)
+{
+    if (src.size == 0)
+    {
+        printf("%s : %d : src vector is empty!\n", __func__, __LINE__);
+        return -1;
+    }
+
+    src_pic.clear();
+    cv::Mat src_frame;
+    cv::Mat dst_frame;
+    for (auto it = src.begin(); it != src.end(); ++it)
+    {
+        src_frame = it->clone();
+        //处理每一张图片
+        if (RestorePicSingle(src_frame, dst_frame) == -1)
+        {
+            printf("%s : %d : src frame restore error.\n", __func__, __LINE__);
+            return -1;
+        }
+        src_pic.push_back(dst_frame);
+    }
+    assert(src_pic.size() == 20);
+    return 0;
+}
+
+int RestorePicSingle(cv::Mat& src_frame, cv::Mat& dst_frame)
+{
+    //处理还原图片
+    dst_frame = src_frame.clone();
+    return 0;
+}
+
+int SavePic(const char* FirstName, std::vector<cv::Mat>& src)
+{
+    if (src.size() == 0)
+    {
+        printf("%s : %d : input src vector is empty!\n", __func__, __LINE__);
+        return -1;
+    }
+    std::string FirstNameStr = FirstName;
+    std::string IntactName;
+    std::string Suffix = ".bmp";
+    for (auto it = src.begin(); it != src.end(); ++it)
+    {
+        IntactName = FirstNameStr + std::to_string(it - src.begin()) + Suffix;
+        cv::imwrite(IntactName, *it);
+    }
+    return 0;
+}

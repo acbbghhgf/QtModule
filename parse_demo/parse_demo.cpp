@@ -7,6 +7,8 @@
 #include "sqlite/sqlite3.h"
 #include "user.h"
 #include "mycomm.h"
+#include <tchar.h>
+#include <assert.h>
 
 
 /*
@@ -59,12 +61,64 @@ src_pic--[out]将获取到的模版原图1：1还原处理后的图片。
 */
 int get_template_pic(std::vector<cv::Mat> &src, std::vector<cv::Mat> &src_pic)
 {
-    //1.给串口发送信号，sleep(1)后拍照保存。
-    //添加串口消息操作。
-    //循环操作第一步20次获取到20张标准模版图片。
+    cv::VideoCapture cap(1);//open camera
+    cv::Mat frame;
+    
+    //清空图片保存容器
+    src.clear();
+    src_pic.clear();
 
+    //1.给串口发送信号，sleep(1)后拍照保存。
+   
+    MyComm mcom(_T("COM1"));
+    
+    //开始获取模版图片
+    for (int i = 0; i < 20; i++)
+    {
+        if (mSendToRecv(mcom) == -1)
+        {
+            printf("%s:%d : send to recv fail!", __func__, __LINE__);
+            return -1;
+        }
+        Sleep(1000);
+
+        //拍照，确保是当前帧，连拍6张取最后一张
+        for (int j = 0; j < 6; j++)
+        {
+            cap >> frame;
+            if (frame.empty())
+            {
+                printf("%s %d : capture get frame is empty!\n", __func__, __LINE__);
+                return -1;
+            }
+            src.push_back(frame);
+        }
+    }
+
+    assert(src.size() == 20);
+    
     //2.将获取到的图片进行1：1还原处理并保存本地。
     //添加四角定位还原图片操作。
+    //将所有图像处理还原1：1并且保存本地
+    if (RestorePic(src, src_pic) == -1)
+    {
+        printf("%s : %d : restore pic error\n", __func__, __LINE__);
+        return -1;
+    }
+
+    //图片保存到本地
+    if (SavePic("srcPic-", src) == -1)
+    {
+        printf("%s : %d : save pic error\n", __func__, __LINE__);
+        return -1;
+    }
+    if (SavePic("RestorPic-", src_pic) == -1)
+    {
+        printf("%s : %d : save restor pic error\n", __func__, __LINE__);
+        return -1;
+    }
+    
+    cap.release();//关闭摄像头
     return 0;
 }
 
@@ -84,7 +138,6 @@ int main()
 
     std::vector<cv::Mat> src_pic;//本地存储的图片
     std::vector<std::string> pic_name;//本地存储的图片名字
-    
 
 
     for (int i = 0; i < 21; i++)
@@ -127,7 +180,28 @@ int main()
 //sigle process
 int main()
 {
-    comm_test();
+    std::vector<std::string> str;//图片对应的数据
+    std::vector<cv::Mat> src;//真实源图片
+    std::vector<cv::Mat> src_pic;//处理还原1：1图片
+
+    //第一步，获取图片及数据。
+    if (get_template_pic(src, src_pic) == -1)
+    {
+        std::cout << __func__ << __LINE__ << "获取模版图片失败" << std::endl;
+        return -1;
+    }
+    
+    //获取图片对应的数据。
+    get_model_str(str);
+
+    //第二步，训练模版
+    if (Template_train(str, src_pic) == -1)
+    {
+        std::cout << __func__ << __LINE__ << "模版训练失败" << std::endl;
+        return -1;
+    }
+
+    return 0;
 }
 
 #endif
