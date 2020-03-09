@@ -252,7 +252,7 @@ int get_threshlod(std::vector<mdata_t>& pos)
 
 int RestorePic(std::vector<cv::Mat>& src, std::vector<cv::Mat>& src_pic)
 {
-    if (src.size == 0)
+    if (src.size() == 0)
     {
         printf("%s : %d : src vector is empty!\n", __func__, __LINE__);
         return -1;
@@ -276,10 +276,233 @@ int RestorePic(std::vector<cv::Mat>& src, std::vector<cv::Mat>& src_pic)
     return 0;
 }
 
+static int get_restore_pic(cv::Mat& src_frame, cv::Mat& dst_frame)
+{
+    if (src_frame.empty())
+    {
+        std::cerr << "read pic failed !!!!!" << std::endl;
+        return -1;
+    }
+    else
+    {
+        auto start_time = std::chrono::system_clock::now();//计时start---------------
+
+        std::string win_name1("src image");
+
+        cv::Mat src_gray;
+        //转灰度图
+        cv::cvtColor(src_frame, src_gray, cv::COLOR_BGR2GRAY);
+        //平滑处理
+        cv::blur(src_gray, src_gray, cv::Size(3, 3));
+        //直方图均衡化
+        cv::equalizeHist(src_gray, src_gray);
+        //std::string win_name2("gray--blur--hist");
+        //cv::namedWindow(win_name2, 1);
+        //cv::imshow(win_name2, src_gray);
+        //cv::waitKey(0);
+        //指定112阈值进行二值化
+        cv::Mat src_threshold;
+        cv::threshold(src_gray, src_threshold, 100, 255, cv::THRESH_BINARY);
+        std::string win_name3("112--threshold");
+        //cv::namedWindow(win_name3);
+        //cv::imshow(win_name3, src_threshold);
+        //cv::waitKey(0);
+
+        cv::Scalar color(1, 1, 255);
+        std::vector<std::vector<cv::Point>> contours;
+        std::vector<cv::Vec4i> hierarchy;
+        cv::Mat draw1 = cv::Mat::zeros(src_frame.size(), CV_8UC3);
+        cv::Mat draw2 = cv::Mat::zeros(src_frame.size(), CV_8UC3);
+
+        findContours(src_threshold, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_NONE, cv::Point(0, 0));
+
+        struct index
+        {
+            int a1;
+            int a2;
+            int a3;
+            int a4;
+        };
+        int temp_index1 = 0;
+        int temp_index2 = 0;
+        int temp_index3 = 0;
+        std::vector<index>vin;
+
+#if 0
+
+        for (int i = 0; i < contours.size(); ++i)
+        {
+            //std::cout << "hierarchy the [" << i << "] is " << (hierarchy)[i] << std::endl;
+            if ((hierarchy)[i][3] == -1)
+            {
+                continue;
+            }
+            else
+            {
+                temp_index1 = (hierarchy)[i][3];
+
+            }
+            if ((hierarchy)[temp_index1][3] == -1)
+            {
+                continue;
+            }
+            else
+            {
+                temp_index2 = (hierarchy)[temp_index1][3];
+            }
+            if ((hierarchy)[temp_index2][3] == -1)
+            {
+                continue;
+            }
+            else
+            {
+                temp_index3 = (hierarchy)[temp_index2][3];
+                index in;
+                in.a1 = i;
+                in.a2 = temp_index1;
+                in.a3 = temp_index2;
+                in.a4 = temp_index3;
+                vin.push_back(in);
+            }
+        }
+
+
+        //std::cout << "construct vin over: " << vin.size() << std::endl;
+        int count = 0;
+        for (auto it = vin.begin(); it != vin.end();)
+        {
+            cv::drawContours(draw1, contours, it->a1, CV_RGB(255, 0, 0), FILLED, 8);
+            it++;
+        }
+        //std::cout << "total count is " << count << std::endl;
+        std::string win_name4("search_contours");
+        //cv::namedWindow(win_name4);
+        //cv::imshow(win_name4, draw1);
+        //cv::waitKey(0);
+#else
+
+        for (int i = 0; i < contours.size(); ++i)
+        {
+            //std::cout << "hierarchy the [" << i << "] is " << (hierarchy)[i] << std::endl;
+            if ((hierarchy)[i][2] == -1)
+            {
+                continue;
+            }
+            else
+            {
+                temp_index1 = (hierarchy)[i][2];
+
+            }
+            if ((hierarchy)[temp_index1][2] == -1)
+            {
+                continue;
+            }
+            else
+            {
+                temp_index2 = (hierarchy)[temp_index1][2];
+                index in;
+                in.a1 = i;
+                in.a2 = temp_index1;
+                in.a3 = temp_index2;
+                vin.push_back(in);
+            }
+        }
+
+        int count = 0;
+        for (auto it = vin.begin(); it != vin.end();)
+        {
+            count += 1;
+            std::vector<cv::Point> contours_out1 = (contours)[it->a1];
+            std::vector<cv::Point> contours_out2 = (contours)[it->a2];
+            double len1 = cv::arcLength(contours_out1, 1);
+            //std::cout << "len1 : " << len1 << std::endl;
+            double len2 = cv::arcLength(contours_out2, 1);
+            //std::cout << "len2 : " << len2 << std::endl;
+
+            if (abs(len1 / len2 - 2) > 1)
+            {
+                it = vin.erase(it);
+            }
+            else
+            {
+                cv::drawContours(draw1, contours, it->a1, CV_RGB(255, 255, 255), cv::FILLED, 8);
+                it++;
+            }
+
+        }
+#endif
+
+        int i = 0;
+        std::vector<std::vector<cv::Point>> target_contours;
+        for (auto it = vin.begin(); it != vin.end(); ++it)
+        {
+            target_contours.push_back((contours)[it->a1]);
+        }
+
+
+        std::vector<cv::Moments> mu(target_contours.size());
+        for (int i = 0; i < target_contours.size(); i++)
+        {
+            mu[i] = cv::moments(target_contours[i], false);
+        }
+        std::vector<cv::Point2i> mc(target_contours.size());
+        for (int i = 0; i < target_contours.size(); ++i)
+        {
+            mc[i] = cv::Point2i(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+            //std::cout << "mc " << i << " is " << mc[i] << std::endl;
+        }
+
+        //auto end_time = std::chrono::system_clock::now();//-计时end----------------------
+        //std::cout << "time duration is " << std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() << "ms" << std::endl;
+
+        std::cout << "mc size is : " << mc.size() << std::endl;
+        if (mc.size() != 4)
+        {
+            std::cout << __func__ << ":" << __LINE__ << ": " << "mc size is no 4--error" << std::endl;
+            return -1;
+        }
+        cv::Mat drawing = cv::Mat::zeros(src_frame.size(), CV_8UC3);
+        for (int i = 0; i < target_contours.size(); i++)
+        {
+            cv::drawContours(drawing, target_contours, i, CV_RGB(255, 255, 255), -1, 8);
+            cv::circle(drawing, mc[i], 4, color, -1, 8, 0);
+            cv::line(drawing, mc[i % mc.size()], mc[(i + 1) % mc.size()], color);
+        }
+
+        auto cmp = [](cv::Point2i& a, cv::Point2i& b) {return a.x < b.x; };
+        auto cmp2 = [](cv::Point2i& a, cv::Point2i& b) {return a.y < b.y; };
+        auto cmp3 = [](cv::Point2i& a, cv::Point2i& b) {return a.y > b.y; };
+
+        std::sort(mc.begin(), mc.end(), cmp);
+        std::sort(mc.begin(), mc.begin() + 2, cmp2);
+        std::sort(mc.begin() + 2, mc.end(), cmp3);
+        for (auto it = mc.begin(); it != mc.end(); it++)
+        {
+            std::cout << *it << std::endl;
+        }
+        cv::Point2f src_points[] = { mc[0],mc[1],mc[2] ,mc[3] };
+
+
+        cv::Point2f dst_points[] = { cv::Point2f(START_X, START_Y), cv::Point2f(START_X, START_Y + DRAW_HEIGHT), cv::Point2f(START_X + DRAW_WIDTH, START_Y + DRAW_HEIGHT), cv::Point2f(START_X + DRAW_WIDTH, START_Y) };
+
+        cv::Mat trans_matrix = cv::getPerspectiveTransform(src_points, dst_points);
+        cv::Mat trans_pic = cv::Mat::zeros(cv::Size(1920, 1200), CV_8UC3);
+
+        cv::warpPerspective(src_frame, trans_pic, trans_matrix, cv::Size(1920, 1200), cv::INTER_LINEAR);
+
+        getRectSubPix(trans_pic, cv::Size(1024, 600), cv::Point2f(512, 300), dst_frame);        
+    }
+    return 0;
+}
+
 int RestorePicSingle(cv::Mat& src_frame, cv::Mat& dst_frame)
 {
     //处理还原图片
-    dst_frame = src_frame.clone();
+    if (get_restore_pic(src_frame, dst_frame) == -1)
+    {
+        printf("%s : %d : get restore pic error!\n", __func__, __LINE__);
+        return -1;
+    }
     return 0;
 }
 

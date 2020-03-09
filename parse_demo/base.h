@@ -21,4 +21,6 @@
 //#define	DEMO_DIR	"demo_block\\"
 #define DEMO_DIR	"610_bmp\\"
 
+#define NET_SOCKET
+
 #endif
