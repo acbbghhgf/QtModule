@@ -198,7 +198,7 @@ void MainWindow::processDone()
         //获取坐标值
         cv::Mat dst;
         cv::cvtColor(dataTmp->frame, dst, cv::COLOR_BGR2RGB);
-        ----------------0310
+        //----------------0310
 
         //获取图像rgb像素值
         inputList.pop_front();

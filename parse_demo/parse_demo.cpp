@@ -9,6 +9,9 @@
 #include "mycomm.h"
 #include <tchar.h>
 #include <assert.h>
+#include <cstdio>
+#include <cstring>
+#include <stdio.h>
 
 
 /*
@@ -61,7 +64,7 @@ src_pic--[out]将获取到的模版原图1：1还原处理后的图片。
 */
 int get_template_pic(std::vector<cv::Mat> &src, std::vector<cv::Mat> &src_pic)
 {
-    cv::VideoCapture cap(1);//open camera
+    cv::VideoCapture cap(0);//open camera
     cv::Mat frame;
     
     //清空图片保存容器
@@ -70,10 +73,32 @@ int get_template_pic(std::vector<cv::Mat> &src, std::vector<cv::Mat> &src_pic)
 
     //1.给串口发送信号，sleep(1)后拍照保存。
    
-    MyComm mcom(_T("COM1"));
+    MyComm mcom(_T("COM13"));
     
+    //初始化模板 BDA
+    char BDA[] = "BDA";
+    if (mcom.SendData(BDA, strlen(BDA)) == -1)
+    {
+        printf("%s:%d : send data to recv -- model init fail!", __func__, __LINE__);
+        return -1;
+    }
+    Sleep(1000);
+
+    //拍照，确保是当前帧，连拍6张取最后一张
+    for (int j = 0; j < 6; j++)
+    {
+        cap >> frame;
+        if (frame.empty())
+        {
+            printf("%s %d : capture get frame is empty!\n", __func__, __LINE__);
+            return -1;
+        }
+    }
+
+    src.push_back(frame);
+
     //开始获取模版图片
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 19; i++)
     {
         if (mSendToRecv(mcom) == -1)
         {
@@ -91,11 +116,23 @@ int get_template_pic(std::vector<cv::Mat> &src, std::vector<cv::Mat> &src_pic)
                 printf("%s %d : capture get frame is empty!\n", __func__, __LINE__);
                 return -1;
             }
-            src.push_back(frame);
         }
+        src.push_back(frame);
     }
 
+    std::cout << __func__ << " : " << __LINE__ << " : src.size = " << src.size() << std::endl;
     assert(src.size() == 20);
+
+#if 1
+    //保存拍取的图片
+    std::string tmp;
+    for (auto it = src.begin(); it != src.end(); ++it)
+    {
+        tmp = "tmp-" + std::to_string(it - src.begin()) + ".png";
+        //sprintf(tmp, "tmp-%d.png", it - src.begin());
+        cv::imwrite(tmp, *it);
+    }
+#endif
     
     //2.将获取到的图片进行1：1还原处理并保存本地。
     //添加四角定位还原图片操作。
@@ -140,9 +177,9 @@ int main()
     std::vector<std::string> pic_name;//本地存储的图片名字
 
 
-    for (int i = 0; i < 21; i++)
+    for (int i = 0; i < 20; i++)
     {//获取存储图片的文件名
-        std::string tmp = DEMO_DIR + std::to_string(i) + ".bmp";
+        std::string tmp = DEMO_DIR  + std::to_string(i)  + ".png";
         pic_name.push_back(tmp);
     }
 
@@ -177,6 +214,7 @@ int main()
 
 #else
 
+# if 1
 //sigle process
 int main()
 {
@@ -203,5 +241,25 @@ int main()
 
     return 0;
 }
+#else
+int main()
+{
+    //1.给串口发送信号，sleep(1)后拍照保存。
+
+    MyComm mcom(_T("COM13"));
+
+    //初始化模板 BDA
+    char BDA[] = "bda";
+    if (mcom.SendData(BDA, strlen(BDA)) == -1)
+    {
+        printf("%s:%d : send data to recv -- model init fail!", __func__, __LINE__);
+        return -1;
+    }
+
+    Sleep(1000);
+
+    return 0;
+}
+#endif
 
 #endif

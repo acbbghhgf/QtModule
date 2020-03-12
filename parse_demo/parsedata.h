@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include "user.h"
 #include "base.h"
+#include "image_process.h"
 
 
 //获取标准模版数据内容

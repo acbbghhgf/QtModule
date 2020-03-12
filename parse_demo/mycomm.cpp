@@ -113,13 +113,20 @@ MyComm::MyComm(const wchar_t* FileName)
 //成功返回0，失败返回-1
 int MyComm::comm_init(const wchar_t* FileName)
 {
-    mCom = CreateFile(_T("COM1"),//COM2口
+    mCom = CreateFile(_T("COM9"),//COM2口
         GENERIC_READ | GENERIC_WRITE,//允许读和写
         0,//独占方式
         NULL,
         OPEN_EXISTING,//打开而不是创建
         0,//同步方式
         NULL);
+    //mCom = CreateFile(FileName,//COM2口
+    //    GENERIC_READ | GENERIC_WRITE,//允许读和写
+    //    0,//独占方式
+    //    NULL,
+    //    OPEN_EXISTING,//打开而不是创建
+    //    0,//同步方式
+    //    NULL);
     if (mCom == (HANDLE)-1)
     {
         printf("打开COM失败!\n");
@@ -129,7 +136,7 @@ int MyComm::comm_init(const wchar_t* FileName)
     {
         printf("COM打开成功！\n");
     }
-    if (!SetupComm(mCom, 1024, 1024))//输入缓冲区和输出缓冲区的大小都是1024
+    if (!SetupComm(mCom, 0, 0))//输入缓冲区和输出缓冲区的大小都是1024
     {
         printf("error id = %d\n", GetLastError());
         return -1;
@@ -146,7 +153,7 @@ int MyComm::comm_init(const wchar_t* FileName)
     DCB dcb1;
     //获取串行口的配置。
     GetCommState(mCom, &dcb1);
-    dcb1.BaudRate = 115200;//波特率为9600
+    dcb1.BaudRate = 9600;//波特率为9600
     dcb1.ByteSize = 8;//每个字节有8位
     dcb1.Parity = NOPARITY;//无奇偶校验位
     dcb1.StopBits = TWOSTOPBITS;//两个停止位
@@ -241,19 +248,19 @@ int MyComm::ReadData(char* Buf, int DataLen)
 
 int mSendToRecv(MyComm &mcom)
 {
-    char BCDA[] = "BCDA";
-    char bcda[] = "bcda";
+    char BCA[] = "BCA";
+    char bca[] = "bca";
 
     //1.1发送信号
     //发送BCDA
-    if (mcom.SendData(BCDA, strlen(BCDA)) == -1)
+    if (mcom.SendData(BCA, strlen(BCA)) == -1)
     {
         return -1;
     }
     //sleep
     Sleep(500);
     //发送bcda
-    if (mcom.SendData(bcda, strlen(bcda)) == -1)
+    if (mcom.SendData(bca, strlen(bca)) == -1)
     {
         return -1;
     }
